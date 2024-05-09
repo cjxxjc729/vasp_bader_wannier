@@ -1,0 +1,69 @@
+#!/bin/bash
+#SBATCH -p v6_384
+#SBATCH -N 1
+#SBATCH -n ncore
+export PATH=/public1/home/sch0149/deepmd/miniconda3/bin:$PATH
+export OMP_NUM_THREADS=1 
+
+home_dir=$(pwd)
+fs_mmn=$(cat mmn_list_file_name | xargs)
+
+
+for f_mmn in $fs_mmn
+do
+  echo "---doing $f_mmn-------------"
+  fidname=$(echo $f_mmn | awk -F '/' '{NF--; OFS="/"; $1=$1; print}')
+  f_win=$(echo $f_mmn | awk -F'/' '{print $NF}' | sed "s/mmn/win/g")    
+
+ 
+  cd $fidname
+   
+    sed "/mp_grid/agamma_only = true" ../../wannier90.win > $f_win  
+    echo "wannier90.x $f_win"
+    /public1/home/sch0149/tools/wannier90-2.1.0/wannier90.x $f_win &
+
+  cd $home_dir
+done
+
+echo ""
+
+echo "all the wannier.*.win ahs bee  submiited"
+
+echo "sleep 30s, there enter the progree checing process"
+sleep 30s
+
+echo "progress checking"
+echo "waitng for them to be done"
+
+for f_mmn in $fs_mmn
+do
+  echo "---checking $f_mmn-------------"
+  fidname=$(echo $f_mmn | awk -F '/' '{NF--; OFS="/"; $1=$1; print}')
+  f_win=$(echo $f_mmn | awk -F'/' '{print $NF}' | sed "s/mmn/win/g")
+  f_wout=$(echo $f_mmn | awk -F'/' '{print $NF}' | sed "s/mmn/wout/g")
+  f_mmn_short=$(echo $f_mmn | awk -F'/' '{print $NF}')
+
+  if [ ! ${fidname}/${f_wout} ]
+  then
+    echo "bad. no ${fidname}/${f_wout}, should chekc this fid"
+  fi
+
+  count=0
+  while ! grep -q "All done: wannier90 exiting" ${fidname}/${f_wout} && [ -f ${fidname}/${f_wout} ]
+  do
+    ((count=count+1))
+    sleep 10s
+    if [ $((count % 30)) -eq 0 ]; then
+      echo "${count}0 s has passed"
+      echo "dont worry, it is still running"
+    fi
+  done
+
+  echo "$f_mmn is done"
+  #rm ${fidname}/${f_mmn_short}
+done
+
+
+
+
+

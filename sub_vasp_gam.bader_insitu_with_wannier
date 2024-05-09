@@ -1,0 +1,113 @@
+#!/bin/bash
+
+remove_all_and_keep.sh << EOF
+INCAR POSCAR POTCAR
+EOF
+rm -r dustbin
+
+if grep -q "NPAR" INCAR; then
+    # 存在NPAR，del
+    sed -i '/NPAR/d' INCAR
+    echo "NPAR is deleted"
+fi
+
+
+if grep -q "LAECHG" INCAR; then
+    # 存在LAECHG，修改其值为.TRUE.
+    sed -i '/LAECHG/c\LAECHG=.TRUE.' INCAR
+    echo "LAECHG set to .TRUE."
+else
+    # 不存在LAECHG，添加LAECHG=.TRUE.到文件末尾
+    echo "LAECHG=.TRUE." >> INCAR
+    echo "LAECHG added with .TRUE."
+fi
+
+
+if grep -q "LVHAR" INCAR; then
+    # 存在LVHAR，修改其值为.TRUE.
+    sed -i '/LVHAR/c\LVHAR=.TRUE.' INCAR
+    echo "LVHAR set to .TRUE."
+else
+    # 不存在LVHAR，添加LVHAR=.TRUE.到文件末尾
+    echo "LVHAR=.TRUE." >> INCAR
+    echo "LVHAR added with .TRUE."
+fi
+
+
+if grep -q "LWANNIER90" INCAR; then
+    # 存在LWANNIER90，修改其值为.TRUE.
+    sed -i '/LWANNIER90/c\LWANNIER90=.TRUE.' INCAR
+    echo "LWANNIER90 set to .TRUE."
+else
+    # 不存在LWANNIER90，添加LWANNIER90=.TRUE.到文件末尾
+    echo "LWANNIER90=.TRUE." >> INCAR
+    echo "LWANNIER90 added with .TRUE."
+fi
+
+
+if grep -q "LWRITE_MMN_AMN" INCAR; then
+    # 存在LWRITE_MMN_AMN，修改其值为.TRUE.
+    sed -i '/LWRITE_MMN_AMN/c\LWRITE_MMN_AMN=.TRUE.' INCAR
+    echo "LWRITE_MMN_AMN set to .TRUE."
+else
+    # 不存在LWRITE_MMN_AMN，添加LWRITE_MMN_AMN=.TRUE.到文件末尾
+    echo "LWRITE_MMN_AMN=.TRUE." >> INCAR
+    echo "LWRITE_MMN_AMN added with .TRUE."
+fi
+
+
+#**************************************************************************#
+
+
+current_dir=$(basename `pwd` | awk -F '.' '{print $1}')
+
+#echo "Automatically generated mesh
+#       1
+#Reciprocal lattice
+#    0.00000000000000    0.00000000000000    0.00000000000000             1
+#" > KPOINTS
+
+t=0
+
+while getopts ":t:" opt; do
+  case ${opt} in
+    t )
+      t=$OPTARG
+      ;;
+    \? )
+      echo "Invalid Option: -$OPTARG" 1>&2
+      exit 1
+      ;;
+    : )
+      echo "Invalid Option: -$OPTARG requires an argument" 1>&2
+      exit 1
+      ;;
+  esac
+done
+shift $((OPTIND -1))
+
+echo "#!/bin/bash
+#SBATCH -p v6_384
+#SBATCH -N 1
+#SBATCH -n 16
+source /public1/soft/modules/module.sh
+module load mpi/intel/2022.1
+export PATH=/public1/home/sch0149/tools/vasp.6.1.0_with_wannier/bin:\$PATH
+
+export OMP_NUM_THREADS=1
+echo \"JOB OF VASP\"
+mpirun -n 16 vasp_gam
+#bader_vasp_insitu.sh" > ${current_dir}_V.sh
+
+if [ $t -eq 0 ]; then
+  echo "go ahead"
+else
+  echo "runvasp limited in ${t}min"
+  normal_t=$(echo $t | awk {printf'("%02d\n",$0)'})
+  sed -i "/v6_384/a \#SBATCH --time=00:${normal_t}:00 " ${current_dir}_V.sh
+fi
+
+
+#cp ~/script/vasp_jobs_gam.sh ./${current_dir}_V.sh
+
+sbatch ${current_dir}_V.sh

@@ -1,0 +1,1 @@
+Place the files from the put_in_vaspmain_src folder into the main VASP/src directory of the VASP program, and compile VASP. Use sub_vasp_gam.bader_insitu_with_wannier to submit VASP jobs. Perform post-processing with bader.insitu.pp to output Bader and Wannier analysis step-by-step during the AIMD (Ab Initio Molecular Dynamics) process.
